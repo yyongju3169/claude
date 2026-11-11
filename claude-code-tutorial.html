@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>클로드 코드 첫걸음</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: 왼쪽 고정 목차 + 오른쪽 레슨 본문. 레슨은 실제 학습 순서라 번호를 붙인다. 모바일에서는 목차가 위로 접힌다. */
+:root {
+  --paper: #F2F4F3;
+  --sheet: #FFFFFF;
+  --ink: #17211E;
+  --muted: #5A6763;
+  --rule: #D5DCD9;
+  --accent: #0E6A5B;
+  --accent-soft: #DCEDE8;
+  --code-bg: #1C2725;
+  --code-ink: #E3ECE9;
+  --code-dim: #8FA39D;
+  --code-key: #8FD9C4;
+  --warn: #8A5A00;
+  --warn-soft: #FBEFD6;
+  --f-display: "Nanum Myeongjo", "Noto Serif KR", Georgia, serif;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #121917; --sheet: #18211F; --ink: #E4ECE9; --muted: #95A6A1; --rule: #2C3936;
+    --accent: #6CCDB5; --accent-soft: #1D3631; --code-bg: #0B1110; --code-ink: #E3ECE9;
+    --code-dim: #7D928C; --code-key: #8FD9C4; --warn: #F0C674; --warn-soft: #33290F;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #121917; --sheet: #18211F; --ink: #E4ECE9; --muted: #95A6A1; --rule: #2C3936;
+  --accent: #6CCDB5; --accent-soft: #1D3631; --code-bg: #0B1110; --code-ink: #E3ECE9;
+  --code-dim: #7D928C; --code-key: #8FD9C4; --warn: #F0C674; --warn-soft: #33290F;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--f-body);
+  font-size: 16px; line-height: 1.75; word-break: keep-all;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+code { font-family: var(--f-mono); font-size: .88em; background: var(--accent-soft); padding: .1em .35em; border-radius: 4px; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 48px 96px; }
+header.top { display: grid; gap: 14px; padding-bottom: 36px; border-bottom: 1px solid var(--rule); margin-bottom: 40px; }
+.eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 600; font-family: var(--f-mono); }
+h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(34px, 5vw, 54px); line-height: 1.2; margin: 0; text-wrap: balance; }
+.lede { max-width: 62ch; color: var(--muted); font-size: 18px; margin: 0; }
+.prompt-line { font-family: var(--f-mono); font-size: 14px; background: var(--code-bg); color: var(--code-ink); padding: 12px 16px; border-radius: 8px; max-width: 520px; overflow-x: auto; white-space: nowrap; }
+.prompt-line .p { color: var(--code-key); }
+.prompt-line .cur { display: inline-block; width: .6em; height: 1.1em; background: var(--code-key); vertical-align: -2px; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .prompt-line .cur { animation: none; } html { scroll-behavior: auto !important; } }
+html { scroll-behavior: smooth; }
+
+.layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 56px; align-items: start; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); display: grid; gap: 4px; font-size: 14px; }
+nav.toc .label { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+nav.toc a { display: grid; grid-template-columns: 26px 1fr 16px; gap: 6px; align-items: baseline; text-decoration: none; color: var(--ink); padding: 5px 8px; border-radius: 6px; }
+nav.toc a:hover { background: var(--accent-soft); }
+nav.toc a .n { font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+nav.toc a .tick { color: var(--accent); font-size: 13px; visibility: hidden; }
+nav.toc a.done .tick { visibility: visible; }
+.progress { margin-top: 14px; font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
+.bar { height: 4px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+
+main { display: grid; gap: 64px; min-width: 0; }
+section.lesson { display: grid; gap: 18px; scroll-margin-top: 24px; }
+.lesson-head { display: grid; grid-template-columns: auto 1fr; gap: 4px 18px; align-items: baseline; }
+.lesson-head .num { font-family: var(--f-mono); font-size: 14px; color: var(--accent); font-variant-numeric: tabular-nums; grid-row: span 2; padding-top: 10px; }
+h2 { font-family: var(--f-display); font-weight: 800; font-size: clamp(24px, 3vw, 31px); line-height: 1.3; margin: 0; text-wrap: balance; }
+.lesson-head .sub { color: var(--muted); margin: 0; }
+h3 { font-size: 16px; font-weight: 600; margin: 8px 0 0; }
+p { margin: 0; max-width: 68ch; }
+ul.plain, ol.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 68ch; }
+
+.code { background: var(--code-bg); color: var(--code-ink); border-radius: 10px; font-family: var(--f-mono); font-size: 14px; line-height: 1.65; position: relative; }
+.code pre { margin: 0; padding: 16px 18px; overflow-x: auto; }
+.code .c { color: var(--code-dim); }
+.code .k { color: var(--code-key); }
+.code .cap { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px 0 18px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--code-dim); }
+.copy { font: 500 12px var(--f-body); color: var(--code-ink); background: transparent; border: 1px solid #3A4A46; border-radius: 6px; padding: 3px 10px; cursor: pointer; letter-spacing: 0; text-transform: none; }
+.copy:hover { border-color: var(--code-key); }
+
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tabs button { font: 500 14px var(--f-body); padding: 6px 14px; border-radius: 999px; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+.note { border-left: 3px solid var(--warn); background: var(--warn-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 15px; max-width: 68ch; }
+.note strong { color: var(--warn); }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td:first-child { white-space: nowrap; }
+kbd { font-family: var(--f-mono); font-size: 13px; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; background: var(--paper); }
+
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.pair > div { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+.pair .t { font-weight: 600; }
+.pair .d { color: var(--muted); font-size: 15px; }
+
+.check { display: flex; gap: 10px; align-items: center; font-size: 15px; color: var(--muted); padding-top: 4px; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+footer { margin-top: 72px; padding-top: 24px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 14px; display: grid; gap: 6px; }
+
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; gap: 32px; }
+  nav.toc { position: static; background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 14px; }
+  .wrap { padding-block: 28px 64px; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Claude Code · 입문 튜토리얼</div>
+    <h1>터미널에서 Claude와 함께 코딩하기</h1>
+    <p class="lede">설치부터 CLAUDE.md, 권한 모드, 슬래시 명령, 스킬·훅·MCP까지. 열 개의 레슨을 순서대로 따라 하면 실제 프로젝트에서 Claude Code를 바로 쓸 수 있습니다.</p>
+    <div class="prompt-line" aria-hidden="true"><span class="p">&gt;</span> 이 저장소의 테스트가 왜 실패하는지 찾아서 고쳐줘 <span class="cur"></span></div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="레슨 목차">
+      <div class="label">레슨</div>
+      <a href="#l1"><span class="n">01</span><span>설치하기</span><span class="tick">✓</span></a>
+      <a href="#l2"><span class="n">02</span><span>첫 세션 시작</span><span class="tick">✓</span></a>
+      <a href="#l3"><span class="n">03</span><span>프롬프트 잘 쓰기</span><span class="tick">✓</span></a>
+      <a href="#l4"><span class="n">04</span><span>권한 모드</span><span class="tick">✓</span></a>
+      <a href="#l5"><span class="n">05</span><span>CLAUDE.md와 메모리</span><span class="tick">✓</span></a>
+      <a href="#l6"><span class="n">06</span><span>슬래시 명령과 단축키</span><span class="tick">✓</span></a>
+      <a href="#l7"><span class="n">07</span><span>컨텍스트 관리</span><span class="tick">✓</span></a>
+      <a href="#l8"><span class="n">08</span><span>Git 워크플로</span><span class="tick">✓</span></a>
+      <a href="#l9"><span class="n">09</span><span>스킬·서브에이전트·훅</span><span class="tick">✓</span></a>
+      <a href="#l10"><span class="n">10</span><span>MCP와 자동화</span><span class="tick">✓</span></a>
+      <div class="progress">
+        <span id="progress-text">0 / 10 레슨 완료</span>
+        <div class="bar"><i id="progress-bar"></i></div>
+      </div>
+    </nav>
+
+    <main>
+      <!-- 01 -->
+      <section class="lesson" id="l1">
+        <div class="lesson-head"><span class="num">01</span><h2>설치하기</h2><p class="sub">운영체제에 맞는 한 줄 명령으로 설치합니다.</p></div>
+        <div class="tabs" role="tablist" aria-label="운영체제 선택">
+          <button role="tab" id="tab-mac" aria-selected="true" data-os="mac">macOS · Linux</button>
+          <button role="tab" id="tab-win" aria-selected="false" data-os="win">Windows</button>
+          <button role="tab" id="tab-npm" aria-selected="false" data-os="npm">npm</button>
+        </div>
+        <div class="code" data-panel="mac"><div class="cap">bash<button class="copy">복사</button></div><pre>curl -fsSL https://claude.ai/install.sh | bash</pre></div>
+        <div class="code" data-panel="win" hidden><div class="cap">PowerShell<button class="copy">복사</button></div><pre>irm https://claude.ai/install.ps1 | iex</pre></div>
+        <div class="code" data-panel="npm" hidden><div class="cap">Node.js 18 이상<button class="copy">복사</button></div><pre>npm install -g @anthropic-ai/claude-code</pre></div>
+        <p>설치가 끝나면 버전을 확인하고, 처음 실행할 때 브라우저로 로그인합니다. Claude 구독(Pro·Max·Team·Enterprise) 계정이나 Anthropic Console의 API 계정 중 하나로 로그인할 수 있습니다.</p>
+        <div class="code"><div class="cap">확인<button class="copy">복사</button></div><pre>claude --version
+claude doctor   <span class="c"># 설치 상태 점검</span></pre></div>
+        <div class="note"><strong>Windows 팁.</strong> Claude Code는 Windows에서 Git Bash를 사용해 셸 명령을 실행합니다. Git for Windows가 설치되어 있는지 먼저 확인하세요. WSL 안에서 Linux 방식으로 설치해도 됩니다.</div>
+        <label class="check"><input type="checkbox" id="done-l1" data-lesson="l1"> 이 레슨을 마쳤어요</label>
+      </section>
+
+      <!-- 02 -->
+      <section class="lesson" id="l2">
+        <div class="lesson-head"><span class="num">02</span><h2>첫 세션 시작</h2><p class="sub">프로젝트 폴더에서 <code>claude</code>를 실행하면 대화형 세션이 열립니다.</p></div>
+        <div class="code"><div class="cap">bash<button class="copy">복사</button></div><pre>cd my-project
+claude                         <span class="c"># 대화형 세션 시작</span>
+claude "이 프로젝트 구조를 설명해줘"   <span class="c"># 첫 질문과 함께 시작</span>
+claude -c                      <span class="c"># 가장 최근 대화 이어가기</span>
+claude -r                      <span class="c"># 이전 대화 목록에서 골라 재개</span></pre></div>
+        <p>처음 열었다면 코드베이스에 대해 질문하는 것부터 해 보세요. Claude는 필요한 파일을 직접 찾아 읽습니다. 어떤 파일을 봐야 하는지 미리 알려줄 필요는 없습니다.</p>
+        <ul class="plain">
+          <li>“이 프로젝트는 무슨 일을 해? 진입점이 어디야?”</li>
+          <li>“로그인 흐름이 어떤 파일들을 거치는지 따라가 줘.”</li>
+          <li>“테스트는 어떻게 실행해?”</li>
+        </ul>
+        <label class="check"><input type="checkbox" id="done-l2" data-lesson="l2"> 이 레슨을 마쳤어요</label>
+      </section>
+
+      <!-- 03 -->
+      <section class="lesson" id="l3">
+        <div class="lesson-head"><span class="num">03</span><h2>프롬프트 잘 쓰기</h2><p class="sub">구체적일수록 한 번에 끝납니다.</p></div>
+        <div class="pair">
+          <div><span class="t">모호한 요청</span><span class="d">“버그 고쳐줘”</span></div>
+          <div><span class="t">구체적인 요청</span><span class="d">“빈 장바구니로 결제하면 500 에러가 나. 재현 테스트를 먼저 쓰고, 고친 뒤 테스트가 통과하는지 확인해줘.”</span></div>
+        </div>
+        <h3>도움이 되는 습관</h3>
+        <ul class="plain">
+          <li><strong>파일 참조:</strong> <code>@src/auth.ts</code>처럼 <kbd>@</kbd>로 파일이나 폴더를 직접 지정합니다.</li>
+          <li><strong>이미지:</strong> 스크린샷을 터미널에 붙여 넣거나 드래그해서 UI 버그나 디자인 시안을 보여줄 수 있습니다.</li>
+          <li><strong>검증 기준:</strong> “테스트 통과”, “빌드 성공”, “린트 경고 없음”처럼 완료 조건을 알려주면 Claude가 스스로 확인합니다.</li>
+          <li><strong>큰 작업은 계획부터:</strong> 여러 파일을 바꾸는 작업은 플랜 모드(레슨 04)에서 계획을 먼저 확인합니다.</li>
+          <li><strong>중간에 방향 바꾸기:</strong> 작업 중에도 메시지를 보낼 수 있고, <kbd>Esc</kbd>로 멈춘 뒤 다시 지시할 수 있습니다.</li>
+        </ul>
+        <label class="check"><input type="checkbox" id="done-l3" data-lesson="l3"> 이 레슨을 마쳤어요</label>
+      </section>
+
+      <!-- 04 -->
+      <section class="lesson" id="l4">
+        <div class="lesson-head"><span class="num">04</span><h2>권한 모드</h2><p class="sub">Claude가 어디까지 묻지 않고 실행할지 정합니다. <kbd>Shift</kbd>+<kbd>Tab</kbd>으로 전환합니다.</p></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>모드</th><th>동작</th><th>언제 쓰나</th></tr></thead>
+          <tbody>
+            <tr><td>기본</td><td>파일 수정과 명령 실행 전에 매번 허락을 구합니다.</td><td>처음 쓸 때, 낯선 저장소</td></tr>
+            <tr><td>편집 자동 수락</td><td>파일 수정은 바로 적용하고, 셸 명령은 여전히 묻습니다.</td><td>방향이 확실한 구현 작업</td></tr>
+            <tr><td>플랜 모드</td><td>읽기와 조사만 하고 계획을 제시합니다. 승인 전에는 아무것도 바꾸지 않습니다.</td><td>리팩터링, 설계 검토</td></tr>
+            <tr><td>자동 모드</td><td>안전하다고 판단한 작업은 묻지 않고 진행합니다(계정에 따라 제공).</td><td>길고 반복적인 작업</td></tr>
+          </tbody>
+        </table></div>
+        <p>자주 쓰는 명령은 <code>/permissions</code>에서 허용 목록에 추가하면 매번 묻지 않습니다. 설정은 프로젝트의 <code>.claude/settings.json</code>에 저장되어 팀과 공유할 수 있습니다.</p>
+        <div class="code"><div class="cap">.claude/settings.json<button class="copy">복사</button></div><pre>{
+  <span class="k">"permissions"</span>: {
+    <span class="k">"allow"</span>: [<span class="c">"Bash(npm run test:*)"</span>, <span class="c">"Bash(git status)"</span>],
+    <span class="k">"deny"</span>:  [<span class="c">"Read(./.env)"</span>]
+  }
+}</pre></div>
+        <label class="check"><input type="checkbox" id="done-l4" data-lesson="l4"> 이 레슨을 마쳤어요</label>
+      </section>
+
+      <!-- 05 -->
+      <section class="lesson" id="l5">
+        <div class="lesson-head"><span class="num">05</span><h2>CLAUDE.md와 메모리</h2><p class="sub">세션이 바뀌어도 Claude가 기억해야 할 프로젝트 지식을 적어 둡니다.</p></div>
+        <p><code>CLAUDE.md</code>는 세션이 시작될 때마다 자동으로 읽히는 안내서입니다. <code>/init</code>을 실행하면 Claude가 코드베이스를 분석해 초안을 만들어 줍니다.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>위치</th><th>범위</th></tr></thead>
+          <tbody>
+            <tr><td><code>~/.claude/CLAUDE.md</code></td><td>내 모든 프로젝트에 적용되는 개인 규칙</td></tr>
+            <tr><td><code>./CLAUDE.md</code></td><td>이 저장소의 팀 공용 규칙. git에 커밋합니다.</td></tr>
+            <tr><td><code>./CLAUDE.local.md</code></td><td>이 저장소에서 나만 쓰는 메모. git에서 제외합니다.</td></tr>
+            <tr><td>하위 폴더의 <code>CLAUDE.md</code></td><td>그 폴더의 파일을 다룰 때 추가로 읽힙니다.</td></tr>
+          </tbody>
+        </table></div>
+        <h3>무엇을 적을까</h3>
+        <div class="code"><div class="cap">CLAUDE.md 예시<button class="copy">복사</button></div><pre><span class="k"># CLAUDE.md</span>
+
+<span class="k">## 명령</span>
+- 개발 서버: pnpm dev
+- 단일 테스트: pnpm vitest run src/cart.test.ts
+
+<span class="k">## 구조</span>
+- API 라우트는 app/api/, DB 접근은 반드시 lib/db.ts를 거친다
+
+<span class="k">## 규칙</span>
+- 새 의존성을 추가하기 전에 먼저 물어볼 것</pre></div>
+        <p>짧고 구체적으로 유지하세요. 코드만 봐도 알 수 있는 내용보다, 여러 파일을 읽어야 알 수 있는 구조와 팀의 암묵적인 규칙이 가치가 큽니다. 세션 중에 “앞으로 커밋 메시지는 한국어로 써줘. 기억해 둬”처럼 말하면 Claude가 메모리에 저장해 다음 세션에서도 따릅니다.</p>
+        <label class="check"><input type="checkbox" id="done-l5" data-lesson="l5"> 이 레슨을 마쳤어요</label>
+      </section>
+
+      <!-- 06 -->
+      <section class="lesson" id="l6">
+        <div class="lesson-head"><span class="num">06</span><h2>슬래시 명령과 단축키</h2><p class="sub">입력창에서 <kbd>/</kbd>를 누르면 전체 목록이 나타납니다.</p></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>명령</th><th>하는 일</th></tr></thead>
+          <tbody>
+            <tr><td><code>/help</code></td><td>도움말과 명령 목록</td></tr>
+            <tr><td><code>/init</code></td><td>코드베이스를 분석해 CLAUDE.md 생성</td></tr>
+            <tr><td><code>/model</code></td><td>사용할 모델 변경</td></tr>
+            <tr><td><code>/clear</code></td><td>대화 기록을 비우고 새로 시작</td></tr>
+            <tr><td><code>/compact</code></td><td>대화를 요약해 컨텍스트 공간 확보</td></tr>
+            <tr><td><code>/context</code></td><td>컨텍스트 사용량 확인</td></tr>
+            <tr><td><code>/resume</code></td><td>이전 대화로 돌아가기</td></tr>
+            <tr><td><code>/permissions</code></td><td>허용·거부 규칙 관리</td></tr>
+            <tr><td><code>/config</code></td><td>테마 등 설정 변경</td></tr>
+            <tr><td><code>/code-review</code></td><td>현재 변경 사항의 버그 검토</td></tr>
+          </tbody>
+        </table></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>단축키</th><th>하는 일</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>Esc</kbd></td><td>진행 중인 작업 멈추기</td></tr>
+            <tr><td><kbd>Esc</kbd> <kbd>Esc</kbd></td><td>이전 메시지로 되감기(코드 변경도 되돌릴 수 있음)</td></tr>
+            <tr><td><kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>권한 모드 전환</td></tr>
+            <tr><td><kbd>@</kbd></td><td>파일·폴더 참조</td></tr>
+            <tr><td><kbd>!</kbd></td><td>셸 명령을 직접 실행하고 결과를 대화에 넣기</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td><td>입력 취소, 두 번 누르면 종료</td></tr>
+          </tbody>
+        </table></div>
+        <label class="check"><input type="checkbox" id="done-l6" data-lesson="l6"> 이 레슨을 마쳤어요</label>
+      </section>
+
+      <!-- 07 -->
+      <section class="lesson" id="l7">
+        <div class="lesson-head"><span class="num">07</span><h2>컨텍스트 관리</h2><p class="sub">대화가 길어질수록 관련 없는 내용이 쌓입니다.</p></div>
+        <ul class="plain">
+          <li><strong>작업이 바뀌면 <code>/clear</code>.</strong> 버그 수정이 끝나고 새 기능을 시작한다면 새 대화가 더 정확합니다.</li>
+          <li><strong>이어가야 하면 <code>/compact</code>.</strong> 핵심만 남기고 요약합니다. <code>/compact 인증 관련 결정만 남겨줘</code>처럼 무엇을 남길지 지정할 수 있습니다.</li>
+          <li><strong><code>/context</code>로 확인.</strong> 시스템 프롬프트, 도구, 메시지가 각각 얼마나 차지하는지 보여줍니다.</li>
+          <li><strong>넓은 탐색은 서브에이전트에게.</strong> 많은 파일을 뒤지는 조사는 별도 에이전트가 하고 결론만 돌려주므로 메인 대화가 가벼워집니다.</li>
+        </ul>
+        <label class="check"><input type="checkbox" id="done-l7" data-lesson="l7"> 이 레슨을 마쳤어요</label>
+      </section>
+
+      <!-- 08 -->
+      <section class="lesson" id="l8">
+        <div class="lesson-head"><span class="num">08</span><h2>Git 워크플로</h2><p class="sub">브랜치, 커밋, PR까지 대화로 처리합니다.</p></div>
+        <div class="code"><div class="cap">대화 예시<button class="copy">복사</button></div><pre><span class="k">&gt;</span> feature/cart-fix 브랜치를 만들고 지금 변경을 커밋해줘
+<span class="k">&gt;</span> 변경 내용을 요약해서 PR을 열어줘
+<span class="k">&gt;</span> PR #42의 리뷰 코멘트를 반영해줘
+<span class="k">&gt;</span> main과 충돌난 부분을 해결해줘</pre></div>
+        <p>GitHub 작업에는 <code>gh</code> CLI가 설치·로그인되어 있어야 합니다. 여러 작업을 동시에 진행하려면 <code>git worktree</code>로 폴더를 나누고 각 폴더에서 별도의 Claude 세션을 실행하세요. 서로의 변경이 섞이지 않습니다.</p>
+        <div class="note"><strong>안전 장치.</strong> Claude는 요청받지 않으면 커밋하거나 푸시하지 않습니다. <code>git push --force</code>처럼 되돌리기 어려운 명령은 실행 전에 확인을 구합니다.</div>
+        <label class="check"><input type="checkbox" id="done-l8" data-lesson="l8"> 이 레슨을 마쳤어요</label>
+      </section>
+
+      <!-- 09 -->
+      <section class="lesson" id="l9">
+        <div class="lesson-head"><span class="num">09</span><h2>스킬·서브에이전트·훅</h2><p class="sub">반복하는 일을 Claude Code에 가르치는 세 가지 방법입니다.</p></div>
+        <div class="pair">
+          <div><span class="t">스킬</span><span class="d">특정 작업의 절차를 담은 지침서. <code>.claude/skills/이름/SKILL.md</code>에 두면 관련 작업에서 자동으로 불러오고, <code>/이름</code>으로 직접 호출할 수도 있습니다.</span></div>
+          <div><span class="t">서브에이전트</span><span class="d">자기 컨텍스트와 도구를 가진 전문 보조. <code>.claude/agents/*.md</code>에 정의하거나 <code>/agents</code>로 만듭니다.</span></div>
+          <div><span class="t">훅</span><span class="d">특정 시점에 반드시 실행되는 셸 명령. Claude의 판단이 아니라 하네스가 실행하므로 항상 지켜집니다.</span></div>
+        </div>
+        <h3>스킬 예시</h3>
+        <div class="code"><div class="cap">.claude/skills/release-notes/SKILL.md<button class="copy">복사</button></div><pre>---
+<span class="k">name</span>: release-notes
+<span class="k">description</span>: 지난 태그 이후 커밋으로 한국어 릴리스 노트를 작성한다
+---
+
+1. git describe --tags --abbrev=0 으로 마지막 태그를 찾는다
+2. 그 이후 커밋을 기능 / 수정 / 기타로 분류한다
+3. CHANGELOG.md 맨 위에 새 섹션으로 추가한다</pre></div>
+        <h3>훅 예시: 파일 수정 후 자동 포맷</h3>
+        <div class="code"><div class="cap">.claude/settings.json<button class="copy">복사</button></div><pre>{
+  <span class="k">"hooks"</span>: {
+    <span class="k">"PostToolUse"</span>: [{
+      <span class="k">"matcher"</span>: <span class="c">"Edit|Write"</span>,
+      <span class="k">"hooks"</span>: [{ <span class="k">"type"</span>: <span class="c">"command"</span>, <span class="k">"command"</span>: <span class="c">"npx prettier --write ."</span> }]
+    }]
+  }
+}</pre></div>
+        <p>그 밖의 훅 시점으로는 <code>PreToolUse</code>(도구 실행 전 차단 가능), <code>UserPromptSubmit</code>, <code>Stop</code>, <code>SessionStart</code>, <code>Notification</code> 등이 있습니다. 직접 JSON을 쓰기 어렵다면 “파일을 고칠 때마다 prettier를 돌리게 설정해줘”라고 부탁하세요.</p>
+        <label class="check"><input type="checkbox" id="done-l9" data-lesson="l9"> 이 레슨을 마쳤어요</label>
+      </section>
+
+      <!-- 10 -->
+      <section class="lesson" id="l10">
+        <div class="lesson-head"><span class="num">10</span><h2>MCP와 자동화</h2><p class="sub">외부 도구를 연결하고, 사람 없이 Claude를 실행합니다.</p></div>
+        <p><strong>MCP(Model Context Protocol)</strong> 서버를 연결하면 Claude가 이슈 트래커, 데이터베이스, 브라우저, 디자인 도구 같은 외부 시스템을 직접 사용할 수 있습니다.</p>
+        <div class="code"><div class="cap">bash<button class="copy">복사</button></div><pre>claude mcp add --transport http 이름 https://example.com/mcp
+claude mcp list          <span class="c"># 연결된 서버 확인</span>
+<span class="c"># 세션 안에서는 /mcp 로 상태 확인·인증</span></pre></div>
+        <p><code>-p</code> 옵션을 쓰면 대화 없이 한 번 실행하고 결과만 출력합니다. 스크립트, 파이프, CI에서 활용할 수 있습니다.</p>
+        <div class="code"><div class="cap">헤드리스 실행<button class="copy">복사</button></div><pre>claude -p "src/의 TODO 주석을 표로 정리해줘"
+cat error.log | claude -p "이 에러의 원인을 한 문단으로 설명해줘"
+claude -p "변경 사항을 리뷰해줘" --output-format json</pre></div>
+        <p>정해진 시간마다 작업을 돌리고 싶다면 <code>/schedule</code>로 클라우드 예약 작업을, 세션 안에서 반복하려면 <code>/loop 5m /명령</code>을 사용할 수 있습니다.</p>
+        <label class="check"><input type="checkbox" id="done-l10" data-lesson="l10"> 이 레슨을 마쳤어요</label>
+      </section>
+
+      <footer>
+        <span>다음 단계: 실제 프로젝트에서 <code>/init</code>을 실행하고, 작은 버그 하나를 Claude와 함께 고쳐 보세요.</span>
+        <span>더 자세한 내용은 공식 문서 docs.claude.com 의 Claude Code 섹션을 참고하세요. 명령과 옵션은 버전에 따라 달라질 수 있으니 <code>/help</code>와 <code>claude --help</code>로 확인하세요.</span>
+      </footer>
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  // OS 탭
+  var tabs = document.querySelectorAll('.tabs button');
+  tabs.forEach(function (b) {
+    b.addEventListener('click', function () {
+      tabs.forEach(function (t) { t.setAttribute('aria-selected', t === b ? 'true' : 'false'); });
+      document.querySelectorAll('[data-panel]').forEach(function (p) { p.hidden = p.dataset.panel !== b.dataset.os; });
+    });
+  });
+  // 기본 탭: Windows 사용자면 Windows
+  if (/Win/i.test(navigator.platform || navigator.userAgent)) document.getElementById('tab-win').click();
+
+  // 복사 버튼
+  document.querySelectorAll('.copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pre = btn.closest('.code').querySelector('pre');
+      var text = pre.innerText.split('\n').map(function (l) { return l.replace(/\s+#.*$/, ''); }).join('\n').trim();
+      var done = function (ok) { btn.textContent = ok ? '복사됨' : '복사 실패'; setTimeout(function () { btn.textContent = '복사'; }, 1500); };
+      try { navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); }); }
+      catch (e) { done(false); }
+    });
+  });
+
+  // 진행 상황 (이 브라우저에만 저장)
+  var KEY = 'cc-tutorial-progress';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) {}
+  var boxes = document.querySelectorAll('.check input');
+  function render() {
+    var n = 0;
+    boxes.forEach(function (bx) {
+      var id = bx.dataset.lesson;
+      bx.checked = !!state[id];
+      if (state[id]) n++;
+      var link = document.querySelector('nav.toc a[href="#' + id + '"]');
+      if (link) link.classList.toggle('done', !!state[id]);
+    });
+    document.getElementById('progress-text').textContent = n + ' / ' + boxes.length + ' 레슨 완료';
+    document.getElementById('progress-bar').style.width = (n / boxes.length * 100) + '%';
+  }
+  boxes.forEach(function (bx) {
+    bx.addEventListener('change', function () {
+      state[bx.dataset.lesson] = bx.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+      render();
+    });
+  });
+  render();
+})();
+</script>
+</body>
+</html>
